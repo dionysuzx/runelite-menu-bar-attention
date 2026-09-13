@@ -17,10 +17,13 @@
 package com.menubarattention;
 
 import com.google.inject.Provides;
+import java.awt.AWTException;
 import java.awt.EventQueue;
 import java.awt.Image;
 import java.awt.SystemTray;
 import java.awt.TrayIcon;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -68,8 +71,11 @@ public class MenuBarAttentionPlugin extends Plugin
 	private final AttentionLatch attention = new AttentionLatch();
 	private final AtomicLong renderGeneration = new AtomicLong();
 
+	private volatile boolean running;
+	private ScheduledFuture<?> setupTask;
 	private ScheduledFuture<?> blinkTask;
 	private TrayIcon modifiedTrayIcon;
+	private TrayIcon ownedTrayIcon;
 	private Image originalImage;
 	private String originalToolTip;
 	private volatile boolean orangePhase;
@@ -83,16 +89,34 @@ public class MenuBarAttentionPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		running = true;
 		if (!SystemTray.isSupported())
 		{
 			log.debug("System tray is not supported");
+			return;
 		}
+
+		setupTask = executor.schedule(() ->
+		{
+			if (running)
+			{
+				requestIcon(false);
+			}
+		}, 1, TimeUnit.SECONDS);
 	}
 
 	@Override
 	protected void shutDown()
 	{
-		clearAttention();
+		running = false;
+		attention.clear();
+		cancelTask(setupTask);
+		setupTask = null;
+		cancelBlinkTask();
+		orangePhase = false;
+
+		long generation = renderGeneration.incrementAndGet();
+		EventQueue.invokeLater(() -> restoreAndRemoveIcon(generation));
 	}
 
 	@Subscribe
@@ -172,10 +196,15 @@ public class MenuBarAttentionPlugin extends Plugin
 
 	private void cancelBlinkTask()
 	{
-		if (blinkTask != null)
+		cancelTask(blinkTask);
+		blinkTask = null;
+	}
+
+	private static void cancelTask(ScheduledFuture<?> task)
+	{
+		if (task != null)
 		{
-			blinkTask.cancel(false);
-			blinkTask = null;
+			task.cancel(false);
 		}
 	}
 
@@ -192,10 +221,9 @@ public class MenuBarAttentionPlugin extends Plugin
 			return;
 		}
 
-		TrayIcon trayIcon = clientUI.getTrayIcon();
+		TrayIcon trayIcon = getOrCreateTrayIcon();
 		if (trayIcon == null)
 		{
-			log.debug("RuneLite tray icon is disabled; enable it in RuneLite settings");
 			return;
 		}
 
@@ -216,5 +244,71 @@ public class MenuBarAttentionPlugin extends Plugin
 			trayIcon.setImage(originalImage);
 			trayIcon.setToolTip(originalToolTip);
 		}
+	}
+
+	private TrayIcon getOrCreateTrayIcon()
+	{
+		TrayIcon runeLiteTrayIcon = clientUI.getTrayIcon();
+		if (runeLiteTrayIcon != null)
+		{
+			if (ownedTrayIcon != null)
+			{
+				SystemTray.getSystemTray().remove(ownedTrayIcon);
+				ownedTrayIcon = null;
+			}
+			return runeLiteTrayIcon;
+		}
+
+		if (ownedTrayIcon != null || !running)
+		{
+			return ownedTrayIcon;
+		}
+
+		TrayIcon trayIcon = new TrayIcon(ClientUI.ICON_16, "RuneLite");
+		trayIcon.setImageAutoSize(true);
+		trayIcon.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent event)
+			{
+				clientUI.forceFocus();
+			}
+		});
+
+		try
+		{
+			SystemTray.getSystemTray().add(trayIcon);
+			ownedTrayIcon = trayIcon;
+			return trayIcon;
+		}
+		catch (AWTException ex)
+		{
+			log.warn("Unable to create menu-bar icon", ex);
+			return null;
+		}
+	}
+
+	private void restoreAndRemoveIcon(long generation)
+	{
+		if (generation != renderGeneration.get())
+		{
+			return;
+		}
+
+		if (modifiedTrayIcon != null)
+		{
+			modifiedTrayIcon.setImage(originalImage);
+			modifiedTrayIcon.setToolTip(originalToolTip);
+		}
+
+		if (ownedTrayIcon != null)
+		{
+			SystemTray.getSystemTray().remove(ownedTrayIcon);
+		}
+
+		modifiedTrayIcon = null;
+		ownedTrayIcon = null;
+		originalImage = null;
+		originalToolTip = null;
 	}
 }
