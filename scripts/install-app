@@ -46,7 +46,6 @@ $jdk_home/bin/jpackage \
 	--java-options '-Xss2m' \
 	--java-options '-XX:CompileThreshold=1500' \
 	--java-options '-Dapple.awt.application.appearance=system' \
-	--java-options '-Dapple.awt.application.name=RuneLite Attention' \
 	--java-options '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED' \
 	--java-options '--add-opens=java.desktop/com.apple.eawt=ALL-UNNAMED' \
 	--java-options '--add-opens=java.desktop/sun.awt=ALL-UNNAMED' \
