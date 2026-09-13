@@ -22,8 +22,7 @@ import java.awt.EventQueue;
 import java.awt.Image;
 import java.awt.SystemTray;
 import java.awt.TrayIcon;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -77,9 +76,13 @@ public class MenuBarAttentionPlugin extends Plugin
 	private ScheduledFuture<?> focusTask;
 	private TrayIcon modifiedTrayIcon;
 	private TrayIcon ownedTrayIcon;
+	private TrayIcon responsiveClickIcon;
+	private MouseListener originalClickListener;
 	private Image originalImage;
 	private String originalToolTip;
 	private volatile boolean orangePhase;
+	private final MouseListener responsiveClickListener =
+		new ResponsiveClickListener(() -> clientUI.forceFocus());
 
 	@Provides
 	MenuBarAttentionConfig provideConfig(ConfigManager configManager)
@@ -153,13 +156,20 @@ public class MenuBarAttentionPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (!MenuBarAttentionConfig.GROUP.equals(event.getGroup()) || !attention.isPending())
+		if (!MenuBarAttentionConfig.GROUP.equals(event.getGroup()))
 		{
 			return;
 		}
 
-		startRendering();
-		scheduleFocusEscalation();
+		if (attention.isPending())
+		{
+			startRendering();
+			scheduleFocusEscalation();
+		}
+		else if ("responsiveMenuBarClick".equals(event.getKey()))
+		{
+			requestIcon(false);
+		}
 	}
 
 	private void raiseAttention(ActivitySnapshot snapshot)
@@ -261,6 +271,7 @@ public class MenuBarAttentionPlugin extends Plugin
 		{
 			return;
 		}
+		updateResponsiveClick(trayIcon);
 
 		if (modifiedTrayIcon != trayIcon)
 		{
@@ -301,14 +312,7 @@ public class MenuBarAttentionPlugin extends Plugin
 
 		TrayIcon trayIcon = new TrayIcon(ClientUI.ICON_16, "RuneLite");
 		trayIcon.setImageAutoSize(true);
-		trayIcon.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mouseClicked(MouseEvent event)
-			{
-				clientUI.forceFocus();
-			}
-		});
+		trayIcon.addMouseListener(responsiveClickListener);
 
 		try
 		{
@@ -323,12 +327,53 @@ public class MenuBarAttentionPlugin extends Plugin
 		}
 	}
 
+	private void updateResponsiveClick(TrayIcon trayIcon)
+	{
+		if (!config.responsiveMenuBarClick() || trayIcon == ownedTrayIcon)
+		{
+			restoreResponsiveClick();
+			return;
+		}
+
+		if (trayIcon == responsiveClickIcon)
+		{
+			return;
+		}
+
+		restoreResponsiveClick();
+		MouseListener[] listeners = trayIcon.getMouseListeners();
+		if (listeners.length != 1)
+		{
+			log.debug("Expected one RuneLite menu-bar click listener, found {}", listeners.length);
+			return;
+		}
+
+		originalClickListener = listeners[0];
+		trayIcon.removeMouseListener(originalClickListener);
+		trayIcon.addMouseListener(responsiveClickListener);
+		responsiveClickIcon = trayIcon;
+	}
+
+	private void restoreResponsiveClick()
+	{
+		if (responsiveClickIcon == null)
+		{
+			return;
+		}
+
+		responsiveClickIcon.removeMouseListener(responsiveClickListener);
+		responsiveClickIcon.addMouseListener(originalClickListener);
+		responsiveClickIcon = null;
+		originalClickListener = null;
+	}
+
 	private void restoreAndRemoveIcon(long generation)
 	{
 		if (generation != renderGeneration.get())
 		{
 			return;
 		}
+		restoreResponsiveClick();
 
 		if (modifiedTrayIcon != null)
 		{

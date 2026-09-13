@@ -70,6 +70,16 @@ public interface MenuBarAttentionConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "responsiveMenuBarClick",
+		name = "Responsive menu-bar click",
+		description = "Use immediate macOS click handling without RuneLite's window flicker"
+	)
+	default boolean responsiveMenuBarClick()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "whenFocused",
 		name = "Alert while focused",
 		description = "Also show attention for notifications fired while RuneLite is already focused"

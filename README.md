@@ -17,6 +17,9 @@ The plugin reuses RuneLite's existing menu-bar icon when one is available and
 creates its own clickable RuneLite icon when the client did not create one.
 An optional **Force focus after** timeout can bring RuneLite to the front when
 the attention remains unresolved; it is disabled by default.
+On macOS, the optional **Responsive menu-bar click** setting replaces RuneLite's
+menu-bar click handler with an immediate, flicker-free handler. The original
+handler is restored when the setting or plugin is disabled.
 
 ## Try it locally
 
