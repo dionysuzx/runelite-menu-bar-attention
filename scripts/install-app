@@ -3,7 +3,7 @@ set -euo pipefail
 
 project_directory=${0:A:h:h}
 runelite_app=/Applications/RuneLite.app
-install_directory=${RUNELITE_ATTENTION_INSTALL_DIRECTORY:-$HOME/Applications}
+install_directory=${RUNELITE_ATTENTION_INSTALL_DIRECTORY:-/Applications}
 app_name='RuneLite Attention.app'
 app_directory=$install_directory/$app_name
 jar_path=$project_directory/build/libs/runelite-menu-bar-attention-0.1.0-all.jar

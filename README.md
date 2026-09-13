@@ -60,7 +60,7 @@ For a normal app icon and one-command updates on a Mac:
    just install
    ```
 
-4. Open **RuneLite Attention** from `~/Applications`, Spotlight, or with
+4. Open **RuneLite Attention** from `/Applications`, Spotlight, or with
    `just run`.
 
 The installer builds and tests the plugin, creates a native ad-hoc signed macOS
