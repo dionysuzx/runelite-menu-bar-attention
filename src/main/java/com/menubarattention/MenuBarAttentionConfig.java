@@ -58,6 +58,17 @@ public interface MenuBarAttentionConfig extends Config
 		return 700;
 	}
 
+	@Range(min = 0, max = 60)
+	@ConfigItem(
+		keyName = "forceFocusAfter",
+		name = "Force focus after",
+		description = "Minutes to blink before bringing RuneLite to the front; 0 disables this"
+	)
+	default int forceFocusAfter()
+	{
+		return 0;
+	}
+
 	@ConfigItem(
 		keyName = "whenFocused",
 		name = "Alert while focused",

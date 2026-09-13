@@ -74,6 +74,7 @@ public class MenuBarAttentionPlugin extends Plugin
 	private volatile boolean running;
 	private ScheduledFuture<?> setupTask;
 	private ScheduledFuture<?> blinkTask;
+	private ScheduledFuture<?> focusTask;
 	private TrayIcon modifiedTrayIcon;
 	private TrayIcon ownedTrayIcon;
 	private Image originalImage;
@@ -113,6 +114,7 @@ public class MenuBarAttentionPlugin extends Plugin
 		cancelTask(setupTask);
 		setupTask = null;
 		cancelBlinkTask();
+		cancelFocusTask();
 		orangePhase = false;
 
 		long generation = renderGeneration.incrementAndGet();
@@ -157,12 +159,14 @@ public class MenuBarAttentionPlugin extends Plugin
 		}
 
 		startRendering();
+		scheduleFocusEscalation();
 	}
 
 	private void raiseAttention(ActivitySnapshot snapshot)
 	{
 		attention.raise(snapshot);
 		startRendering();
+		scheduleFocusEscalation();
 	}
 
 	private void startRendering()
@@ -190,6 +194,7 @@ public class MenuBarAttentionPlugin extends Plugin
 	{
 		attention.clear();
 		cancelBlinkTask();
+		cancelFocusTask();
 		orangePhase = false;
 		requestIcon(false);
 	}
@@ -206,6 +211,36 @@ public class MenuBarAttentionPlugin extends Plugin
 		{
 			task.cancel(false);
 		}
+	}
+
+	private void scheduleFocusEscalation()
+	{
+		cancelFocusTask();
+		int delayMinutes = config.forceFocusAfter();
+		if (delayMinutes == 0)
+		{
+			return;
+		}
+
+		focusTask = executor.schedule(() ->
+		{
+			if (attention.isPending())
+			{
+				EventQueue.invokeLater(() ->
+				{
+					if (attention.isPending())
+					{
+						clientUI.forceFocus();
+					}
+				});
+			}
+		}, delayMinutes, TimeUnit.MINUTES);
+	}
+
+	private void cancelFocusTask()
+	{
+		cancelTask(focusTask);
+		focusTask = null;
 	}
 
 	private void requestIcon(boolean showAttention)

@@ -15,6 +15,8 @@ notification:
 Logging out or disabling the plugin restores the original icon immediately.
 The plugin reuses RuneLite's existing menu-bar icon when one is available and
 creates its own clickable RuneLite icon when the client did not create one.
+An optional **Force focus after** timeout can bring RuneLite to the front when
+the attention remains unresolved; it is disabled by default.
 
 ## Try it locally
 
