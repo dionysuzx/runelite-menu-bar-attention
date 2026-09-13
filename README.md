@@ -4,6 +4,8 @@ Menu Bar Attention is a RuneLite plugin for macOS. When RuneLite fires a
 notification in the background, its menu-bar icon blinks orange until you
 genuinely resume gameplay.
 
+![RuneLite's menu-bar icon blinking orange](assets/menu-bar-attention.gif)
+
 Opening or focusing RuneLite does not dismiss the indicator. It clears when
 your character:
 
